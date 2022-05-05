@@ -56,9 +56,14 @@ class Simulation():
 
     def plot_diagonal(self, save=False):
         '''Plot the gradient of the Spot Size matrix'''
-        diag = np.flipud(self.matrix_r[0]).diagonal()
+        matrix = self.matrix_r[0]
+        diag = np.flipud(matrix).diagonal()
         grad = np.gradient(diag)
-        fig = go.Figure(data=go.Scatter(x=np.arange(len(grad)), y=grad, mode='lines'))
+        fig = go.Figure(data=go.Scatter(x=np.arange(len(grad)), y=grad, mode='lines', name='diagonal'))
+        grad_v = np.gradient(np.flip(matrix[:, 0]))
+        fig.add_trace(go.Scatter(x = np.arange(len(grad_v)), y = grad_v, mode='lines', name = 'vertical'))
+        grad_h = np.gradient(matrix[-1, :])
+        fig.add_trace(go.Scatter(x = np.arange(len(grad_h)), y = grad_h, mode='lines', name = 'horizontal'))
         fig.update_yaxes(title_text='Spot Size grandient')
         fig.update_xaxes(title_text='Distance from center')
         if save:
@@ -79,5 +84,5 @@ class Simulation():
                     self.plot_diagonal(save=save)
 
 i = Simulation()
-i.plot_all_files('data')
+i.plot_all_files('data', matrix=False)
 
