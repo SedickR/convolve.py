@@ -16,6 +16,7 @@ class Simulation():
     def load_data(self, filename):
         '''Load data from a Zemax .txt file'''
         self.df = pd.read_csv(filename, sep=';')
+        print(self.df)
         self.matrix_s = (np.resize(np.array(self.df.loc[:,'Spot Size']), (12,12)), 'Combined')
         self.matrix_r = (np.resize(np.array(self.df.loc[:, 'R Spot Size']), (12,12)), 'Red')
         self.matrix_g = (np.resize(np.array(self.df.loc[:, 'G Spot Size']), (12,12)), 'Green')
@@ -69,6 +70,6 @@ class Simulation():
 
 i = Simulation()
 i.load_data('data\\test.txt')
-i.plot_matrix()
+i.plot_matrix(save=True)
 i.plot_diagonal()
 
