@@ -3,6 +3,7 @@ import plotly.graph_objects as go
 import pandas as pd
 import time
 import datetime
+import os
 
 class Simulation():
     '''Zemax optical simulation data analysis and plotting'''
@@ -16,7 +17,6 @@ class Simulation():
     def load_data(self, filename):
         '''Load data from a Zemax .txt file'''
         self.df = pd.read_csv(filename, sep=';')
-        print(self.df)
         self.matrix_s = (np.resize(np.array(self.df.loc[:,'Spot Size']), (12,12)), 'Combined')
         self.matrix_r = (np.resize(np.array(self.df.loc[:, 'R Spot Size']), (12,12)), 'Red')
         self.matrix_g = (np.resize(np.array(self.df.loc[:, 'G Spot Size']), (12,12)), 'Green')
@@ -56,7 +56,7 @@ class Simulation():
 
     def plot_diagonal(self, save=False):
         '''Plot the gradient of the Spot Size matrix'''
-        diag = np.flipud(self.matrix_s[0]).diagonal()
+        diag = np.flipud(self.matrix_r[0]).diagonal()
         grad = np.gradient(diag)
         fig = go.Figure(data=go.Scatter(x=np.arange(len(grad)), y=grad, mode='lines'))
         fig.update_yaxes(title_text='Spot Size grandient')
@@ -68,8 +68,16 @@ class Simulation():
         else:
             fig.show()
 
+    def plot_all_files(self, directory, matrix=True, diagonal=True, save=False, rgb=False, r=False, g=False, b=False):
+        '''Plot all text file in the directory'''
+        for file in os.listdir(directory):
+            if file.endswith('.txt'):
+                self.load_data(directory+'\\'+file)
+                if matrix:
+                    self.plot_matrix(save=save, rgb=rgb, r=r, g=g, b=b)
+                if diagonal:
+                    self.plot_diagonal(save=save)
+
 i = Simulation()
-i.load_data('data\\test.txt')
-i.plot_matrix(save=True)
-i.plot_diagonal()
+i.plot_all_files('data')
 
