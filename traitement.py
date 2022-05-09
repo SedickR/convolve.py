@@ -24,9 +24,10 @@ class Simulation():
     
     def heatmap_maker(self, matrix):
         '''Create figure from matrix'''
-        fig = go.Figure(data=go.Heatmap(z=matrix[0]))
+        fig = go.Figure(data=go.Heatmap(z=matrix[0], colorbar={"title":'Spot Size [μm]'}))
         fig.update_yaxes(title_text='Row index')
         fig.update_xaxes(title_text='Column index')
+        fig.update_layout(title=f'Spot Size RSRH')
         return fig, matrix[1]
 
 
@@ -43,7 +44,7 @@ class Simulation():
         if g:
             plots.append(self.heatmap_maker(self.matrix_g))
         if b:
-            plots.append(self.heatmap_maker(self.matrix_b))        
+            plots.append(self.heatmap_maker(self.matrix_b))      
         if save:
             for fig, name in plots:
                 fig.write_image(f'matrix_heatmap\\{name}_heatmap_{datetime.datetime.now().isoformat("_", "minutes").replace(":", "")}.pdf')
@@ -66,6 +67,7 @@ class Simulation():
         fig.add_trace(go.Scatter(x = np.arange(len(grad_h)), y = grad_h, mode='lines', name = 'horizontal'))
         fig.update_yaxes(title_text='Spot Size grandient')
         fig.update_xaxes(title_text='Distance from center')
+        fig.update_layout(title=f'Spot Size Gradient RSRH')
         if save:
             fig.write_image(f'diagonal_gradient\\gradient_{datetime.datetime.now().isoformat("_", "minutes").replace(":", "")}.pdf')
             time.sleep(1)
@@ -76,7 +78,7 @@ class Simulation():
     def plot_all_files(self, directory, matrix=True, diagonal=True, save=False, rgb=False, r=False, g=False, b=False):
         '''Plot all text file in the directory'''
         for file in os.listdir(directory):
-            if file.endswith('.txt'):
+            if file.endswith('H.txt'):
                 self.load_data(directory+'\\'+file)
                 if matrix:
                     self.plot_matrix(save=save, rgb=rgb, r=r, g=g, b=b)
@@ -84,5 +86,5 @@ class Simulation():
                     self.plot_diagonal(save=save)
 
 i = Simulation()
-i.plot_all_files('data', matrix=False)
+i.plot_all_files('data_batch', save=True)
 
