@@ -34,7 +34,7 @@ class Simulation():
     def plot_matrix(self, save=False, rgb=False, r=False, g=False, b=False):
         '''Plot the Spot Size matrix'''
         plots = []
-        plots.append(self.heatmap_maker(self.matrix_s))
+        plots.append(self.heatmap_maker(self.matrix_r))
         if rgb:
             plots.append(self.heatmap_maker(self.matrix_r))
             plots.append(self.heatmap_maker(self.matrix_g))    
@@ -58,12 +58,12 @@ class Simulation():
     def plot_diagonal(self, save=False):
         '''Plot the gradient of the Spot Size matrix'''
         matrix = self.matrix_r[0]
-        diag = np.flipud(matrix).diagonal()
+        diag = matrix.diagonal()
         grad = np.gradient(diag)
         fig = go.Figure(data=go.Scatter(x=np.arange(len(grad)), y=grad, mode='lines', name='diagonal'))
-        grad_v = np.gradient(np.flip(matrix[:, 0]))
+        grad_v = np.gradient(matrix[:, 0])
         fig.add_trace(go.Scatter(x = np.arange(len(grad_v)), y = grad_v, mode='lines', name = 'vertical'))
-        grad_h = np.gradient(matrix[-1, :])
+        grad_h = np.gradient(matrix[0, :])
         fig.add_trace(go.Scatter(x = np.arange(len(grad_h)), y = grad_h, mode='lines', name = 'horizontal'))
         fig.update_yaxes(title_text='Spot Size grandient')
         fig.update_xaxes(title_text='Distance from center')
@@ -86,5 +86,5 @@ class Simulation():
                     self.plot_diagonal(save=save)
 
 i = Simulation()
-i.plot_all_files('data_batch', save=True)
+i.plot_all_files('data_batch', matrix=False)
 
