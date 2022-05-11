@@ -1,0 +1,11 @@
+#display parameters
+#distance in pixels
+red :
+  85
+green :
+  94
+noise_px_diameter :
+  29
+pixel_diameter :
+  - 2.2
+  - 'um'
