@@ -1,12 +1,14 @@
+#todohighlight.include
 import numpy as np
 import plotly.graph_objects as go
 import pandas as pd
-import time
-import datetime
-import os
+import time, datetime, os
 
-#todo 0.75217, pas de rotation cas idéal
-#centre à centre deux pixel dans la matrice diagonale, 39.5 um
+# TODO:
+# - 0.75217, pas de rotation cas idéal
+# - centre à centre deux pixel dans la matrice diagonale, 39.5 um
+# - Tester code avec un truc déjà connue et facile à faire à la main
+# - intégrer dans l'affichage
 
 class Simulation:
     """Zemax optical simulation data analysis and plotting"""
@@ -26,7 +28,7 @@ class Simulation:
             "Combined",
         )
         self.matrix_r = (
-            np.resize(np.array(self.df.loc[:, "R Spot Size"]), (12, 12)),
+            np.resize(np.array(self.df.loc[:, "R Spot Size"]), (int(np.sqrt(len(self.df.loc[:, "R Spot Size"]))), int(np.sqrt(len(self.df.loc[:, "R Spot Size"]))))),
             "Red",
         )
         self.matrix_g = (
@@ -115,6 +117,7 @@ class Simulation:
         fig.update_yaxes(title_text="Spot Size grandient")
         fig.update_xaxes(title_text="Distance from center")
         fig.update_layout(title=f"Spot Size Gradient RSRH")
+        fig.update_layout(template='simple_white')
         if save:
             fig.write_image(
                 f'diagonal_gradient\\gradient_{datetime.datetime.now().isoformat("_", "minutes").replace(":", "")}.pdf'
@@ -139,7 +142,7 @@ class Simulation:
     ):
         """Plot all text file in the directory"""
         for file in os.listdir(directory):
-            if file.endswith("E.txt"):
+            if file.endswith(".txt") or file.endswith(".csv"):
                 self.load_data(directory + "\\" + file)
                 if matrix:
                     self.plot_matrix(save=save, rgb=rgb, r=r, g=g, b=b)
@@ -148,4 +151,6 @@ class Simulation:
 
 
 i = Simulation()
-i.plot_all_files("data_batch")
+i.load_data('test1.csv')
+i.plot_matrix(save=False,r=True)
+i.plot_diagonal(save=False)
