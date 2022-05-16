@@ -1,61 +1,66 @@
 import cv2 as cv
 import numpy as np
 import os, yaml, time, csv
+import pathlib, typing
 
 
 class image_analysis:
-    def __init__(self, path):
+    """
+    The class implements a series of method to analyze point size data of
+    sub-pixel imaged through a MLA. It allows to quantify the spot size of
+    a display and lens array using a series of digital images.
+    """
+
+    def __init__(self, path: pathlib.Path):
+        """Arguement: path to image or directory containing images"""
+        path = pathlib.Path(path)
+
         self.channel = None
-        if path.endswith('.bmp') or path.endswith('.png'):
-            self.directory = os.path.dirname(path)
+        if path.suffix == ".bmp" or path.suffix == ".png":
+            self.directory = path.parent
+            print(type(self.directory))
             self.image_path = path
-            print('Single image mode')
+            print("Single image mode")
         else:
             self.image_path = None
             self.directory = path
-
         # retrieve background image, and display data if they exist
         self.display_path = None
         self.background_path = None
         self.background = None
-        self.display_path = "default_display.yaml"
+        self.display_path = pathlib.Path("default_display.yaml")
         try:
-            for file in os.listdir(self.directory):
-                if 'background' in file:
-                    self.background_path = os.path.join(self.directory, file)
-                    print('Background image found')
-                if 'display' in file:
-                    self.display_path = os.path.join(self.directory, file)
-                    print('display data found')
+            for file in self.directory.iterdir():
+                if "background" in str(file):
+                    self.background_path = self.directory / file
+                    print("Background image found")
+                if "display" in str(file):
+                    self.display_path = self.directory / file
+                    print("display data found")
         except FileNotFoundError:
-            print('No background image or display data found')
+            print("No background image or display data found, using default")
 
-        
-
-    def background_subtraction(self, image, background):
-        '''Arguement: image, background
-        Return: subtracted image'''
-        return cv.subtract(image, background)
-
-    def center_of_mass(self, im_path, display_data, channel="r", background_path=None, show=False):
-        '''Arguement: path to image, color channel, path to background image
-        Returns : coordinates of center of mass, image in grayscale, [pixel width, unit]'''
+    def center_of_mass(
+        self, im_path, display_data, channel="r", background_path=None, show=False
+    ):
+        """Arguement: path to image, yaml display data file path, color channel, path to background image
+        Returns : coordinates of center of mass, image in grayscale, [pixel width, unit]"""
         # get display data
-        with open(display_data, 'r') as f:
+        with open(display_data, "r") as f:
             display = yaml.safe_load(f)
 
-        # read image through command line
-        img = cv.imread(f'{im_path}')
+        # read image
+        img = cv.imread(f"{im_path}")
 
         if show:
             cv.imshow("image", img)
             cv.waitKey(0)
 
-        #remove background if background path is given
+        # remove background if background path is given
         if background_path:
-            background = cv.imread(f'{background_path}')
-            img = self.background_subtraction(img, background)
-        
+            background = cv.imread(f"{background_path}")
+            img = cv.subtract(img, background)
+
         if show:
             cv.imshow("image", img)
             cv.waitKey(0)
@@ -63,90 +68,210 @@ class image_analysis:
         # split image into channels
         b, g, r = cv.split(img)
         if channel == "b":
-            _,thresh = cv.threshold(b,15,255,0)
-            color = 'blue'
+            _, thresh = cv.threshold(b, 15, 255, 0)
+            color = "blue"
         elif channel == "g":
-            _,thresh = cv.threshold(g,15,255,0)
-            color = 'green'
+            _, thresh = cv.threshold(g, 15, 255, 0)
+            color = "green"
         else:
-            _,thresh = cv.threshold(r,15,255,0)
-            color = 'red'
-        
+            _, thresh = cv.threshold(r, 8, 255, 0)
+            color = "red"
+
         if show:
             cv.imshow("image", thresh)
             cv.waitKey(0)
 
         # define center of image
-        center = (int(thresh.shape[1]//2), int(thresh.shape[0]//2))
+        center = (int(thresh.shape[1] // 2), int(thresh.shape[0] // 2))
 
         # mask unwanted pixels based on display measurements
-        cv.circle(thresh, (center[0]-display[color][1], center[1]+display[color][0]), display['noise_px_diameter'], (0,0,0), -1)
-        cv.circle(thresh, (center[0]+display[color][0], center[1]+display[color][1]), display['noise_px_diameter'], (0,0,0), -1)
-        cv.circle(thresh, (center[0]-display[color][0], center[1]-display[color][1]), display['noise_px_diameter'], (0,0,0), -1)
-        cv.circle(thresh, (center[0]+display[color][1], center[1]-display[color][0]), display['noise_px_diameter'], (0,0,0), -1)
+        cv.circle(
+            thresh,
+            (center[0] - display[color][1], center[1] + display[color][0]),
+            display["noise_px_diameter"],
+            (0, 0, 0),
+            -1,
+        )
+        cv.circle(
+            thresh,
+            (center[0] + display[color][0], center[1] + display[color][1]),
+            display["noise_px_diameter"],
+            (0, 0, 0),
+            -1,
+        )
+        cv.circle(
+            thresh,
+            (center[0] - display[color][0], center[1] - display[color][1]),
+            display["noise_px_diameter"],
+            (0, 0, 0),
+            -1,
+        )
+        cv.circle(
+            thresh,
+            (center[0] + display[color][1], center[1] - display[color][0]),
+            display["noise_px_diameter"],
+            (0, 0, 0),
+            -1,
+        )
+        if show:
+            cv.imshow("image", thresh)
+            cv.waitKey(0)
+
+        thresh = self.remove_outliers(thresh, center)
+
         if show:
             cv.imshow("image", thresh)
             cv.waitKey(0)
 
         # create a meshgrid for coordinate calculation
         x_m, y_m = np.meshgrid(
-                np.arange(0, thresh.shape[1]),
-                np.arange(0, thresh.shape[0]),
-                sparse=False,
-                indexing='xy'
-            )
+            np.arange(0, thresh.shape[1]),
+            np.arange(0, thresh.shape[0]),
+            sparse=False,
+            indexing="xy",
+        )
 
         # compute center of mass
         x_c = int(np.sum(x_m * thresh) / np.sum(thresh))
         y_c = int(np.sum(y_m * thresh) / np.sum(thresh))
 
-        return (x_c, y_c), thresh, display['pixel_diameter']
+        return (x_c, y_c), thresh, display["pixel_diameter"]
 
+    def center_of_mass_cca(
+        self, im_path, display_data, channel="r", background_path=None, show=False
+    ):
+        """Arguement: path to image, yaml display data file path, color channel, path to background image
+        Returns : coordinates of center of mass, image in grayscale, [pixel width, unit]"""
+        # get display data
+        with open(display_data, "r") as f:
+            display = yaml.safe_load(f)
+
+        # read image
+        img = cv.imread(fr"{im_path}")
+
+        if show:
+            cv.imshow("image", img)
+            cv.waitKey(0)
+
+        # remove background if background path is given
+        if background_path:
+            background = cv.imread(fr"{background_path}")
+            img = cv.subtract(img, background)
+
+        if show:
+            cv.imshow("image", img)
+            cv.waitKey(0)
+
+        value = 15
+
+        # split image into channels
+        b, g, r = cv.split(img)
+        if channel == "b":
+            _, thresh = cv.threshold(b, value, 255, 0)
+            color = "blue"
+        elif channel == "g":
+            _, thresh = cv.threshold(g, value, 255, 0)
+            color = "green"
+        else:
+            _, thresh = cv.threshold(r, value, 255, 0)
+            color = "red"
+
+        if show:
+            cv.imshow("image", thresh)
+            cv.waitKey(0)
+
+        # Components analysis of thresholded image
+        analysis = cv.connectedComponentsWithStats(thresh, 8, cv.CV_32S)
+        labels = analysis[1]
+        stats = analysis[2]
+        centroids = analysis[3]
+
+        # Remove first component (background)
+        stats = stats[1:]
+        centroids = centroids[1:]
+
+        # Find the largest component's index
+        largest_component = np.argmax(stats[:, cv.CC_STAT_AREA])
+        largest_component_centroid = centroids[largest_component]
+
+        # Show label image of largest component
+        label_image = np.zeros(thresh.shape, dtype=np.uint8)
+        label_image[labels == largest_component + 1] = 255
+
+        if show:
+            cv.imshow("image", label_image)
+            cv.waitKey(0)
+
+        return (
+            (int(largest_component_centroid[0]), int(largest_component_centroid[1])),
+            label_image,
+            display["pixel_diameter"],
+        )
 
     def rms_spot(self, center, img_gray, units):
-        '''Arguement: center of mass, grayscale image, [pixel width, unit]
-        Returns : rms spot size, units'''
+        """Arguement: center of mass, grayscale image, [pixel width, unit]
+        Returns : rms spot size, units"""
         # Find all non-zero pixels in the image
         non_zero = cv.findNonZero(img_gray)
 
         # Distance of all non-zero pixels from the center of mass
-        dist = np.sqrt((non_zero[:,:,0] - center[0])**2 + (non_zero[:,:,1] - center[1])**2)
+        dist = np.sqrt(
+            (non_zero[:, :, 0] - center[0]) ** 2 + (non_zero[:, :, 1] - center[1]) ** 2
+        )
 
         # Return the rms spot size
-        return np.sqrt(np.mean(dist**2))*units[0]
+        return np.sqrt(np.mean(dist**2)) * units[0]
 
     def compute_rms(self, channel="r", show=False):
-        '''Returns: [(file_name, rms spot size)]'''
+        """Returns: [(file_name, rms spot size)]
+        
+        Computes the rms spot size for all images in the directory or for a single image."""
         result = []
         self.channel = channel
         if self.image_path:
-            result.append([file, self.rms_spot(*self.center_of_mass(self.image_path, self.display_path, channel, self.background_path, show))])
+            result.append(
+                [
+                    self.image_path.name,
+                    self.rms_spot(
+                        *self.center_of_mass_cca(
+                            self.image_path,
+                            self.display_path,
+                            channel,
+                            self.background_path,
+                            show,
+                        )
+                    ),
+                ]
+            )
         else:
-            for file in os.listdir(self.directory):
-                if file.endswith('.bmp') and 'background' not in file:
-                    computed = self.rms_spot(*self.center_of_mass(os.path.join(self.directory, file), self.display_path, channel, self.background_path, show))
+            for file in self.directory.iterdir():
+                if file.suffix == ".bmp" and "background" not in str(file):
+                    computed = self.rms_spot(
+                        *self.center_of_mass_cca(
+                            file,
+                            self.display_path,
+                            channel,
+                            self.background_path,
+                            show,
+                        )
+                    )
                     if show:
-                        print(f'{file}: {computed[0]} {computed[1]}')
+                        print(f"{file}: {computed}")
                     result.append([file, computed])
         if result is None:
             raise Exception("No images found in specified directory")
         result = np.array(result)
-        result = result[np.argsort(result[:,0])]
+        result = result[np.argsort(result[:, 0])]
         return result
-    
+
     def save_to_csv(self, result, filename):
-        '''Arguement: result, filename
-        Returns: None'''
-        column_index = {'r': 3, 'g': 2, 'b': 1}
-        with open(filename, 'w') as f:
-            writer = csv.writer(f, delimiter=';')
-            writer.writerow(['Spot Size', 'B Spot Size', 'G Spot Size', 'R Spot Size'])
+        """Arguement: result, filename
+        Returns: None"""
+        column_index = {"r": 3, "g": 2, "b": 1}
+        with open(filename, "w") as f:
+            writer = csv.writer(f, delimiter=";")
+            writer.writerow(["Spot Size", "B Spot Size", "G Spot Size", "R Spot Size"])
             for row in result:
                 row_template = [0, 0, 0, 0]
                 row_template[column_index[self.channel]] = row[1]
                 writer.writerow(row_template)
-
-
-i = image_analysis('images')
-print(i.compute_rms(channel = 'r'))
-i.save_to_csv(i.compute_rms(channel = 'r'), 'test1.csv')
