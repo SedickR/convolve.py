@@ -68,6 +68,7 @@ class Simulation:
 
         Takes a matrix of spot size and returns a plotly Heatmap figure
         with degrees as x and y axis and microns as z axis"""
+        steps = {'r': 0.75217*2, 'g': 0.75217, 'b':0.75217*2}
         fig = go.Figure(
             data=go.Heatmap(z=matrix[0], colorbar={"title": "Spot Size [μm]"})
         )
@@ -106,15 +107,16 @@ class Simulation:
             for fig, name in plots:
                 fig.show()
 
-    def plot_diagonal(self, rgb='r', save=False):
+    def plot_diagonal(self, rgb="r", save=False):
         """Plot the gradient of the Spot Size matrix
-        
+
         Plots the gradient of the three axis of interest of spot size of the loaded data.
         Saves the figure if save is True."""
+        steps = {'r': 0.75217, 'g': 0.75217, 'b':0.75217}
         if "r" in rgb and "g" in rgb and "b" in rgb:
-            self.plot_diagonal(rgb='r', save=save)
-            self.plot_diagonal(rgb='g', save=save)
-            self.plot_diagonal(rgb='b', save=save)
+            self.plot_diagonal(rgb="r", save=save)
+            self.plot_diagonal(rgb="g", save=save)
+            self.plot_diagonal(rgb="b", save=save)
         elif rgb == "r":
             matrix = self.matrix_r[0]
         elif rgb == "g":
@@ -123,23 +125,23 @@ class Simulation:
             matrix = self.matrix_b[0]
         else:
             raise ValueError("rgb must be 'r', 'g' or 'b' or a combination of those")
-        
+
         # compute gradient
         diag = matrix.diagonal()
         grad = np.gradient(diag)
         fig = go.Figure(
-                data=go.Scatter(
-                    x=np.arange(len(grad)),
-                    y=grad,
-                    mode="lines",
-                    name="diagonal",
-                    line=dict(shape="linear", color="black"),
-                )
+            data=go.Scatter(
+                x=np.arange(0, len(grad)*steps[rgb], step=steps[rgb]),
+                y=grad,
+                mode="lines",
+                name="diagonal",
+                line=dict(shape="linear", color="black"),
+            )
         )
         grad_v = np.gradient(matrix[:, 0])
         fig.add_trace(
             go.Scatter(
-                x=np.arange(len(grad_v)),
+                x=np.arange(0, len(grad_v)*steps[rgb], step=steps[rgb]),
                 y=grad_v,
                 mode="lines",
                 name="vertical",
@@ -149,7 +151,7 @@ class Simulation:
         grad_h = np.gradient(matrix[0, :])
         fig.add_trace(
             go.Scatter(
-                x=np.arange(len(grad_h)),
+                x=np.arange(0, len(grad_h)*steps[rgb], step=steps[rgb]),
                 y=grad_h,
                 mode="lines",
                 name="horizontal",
@@ -158,7 +160,7 @@ class Simulation:
         )
         fig.add_trace(
             go.Scatter(
-                x=np.arange(len(matrix[:, 0])),
+                x=np.arange(0, len(matrix[:, 0])+3, step=steps[rgb]),
                 y=matrix[:, 0],
                 mode="lines",
                 name="Horizontal",
@@ -166,18 +168,18 @@ class Simulation:
         )
         fig.add_trace(
             go.Scatter(
-                x=np.arange(len(matrix[0, :])),
+                x=np.arange(0, (len(matrix[0, :])+2)*steps[rgb], step=steps[rgb]),
                 y=matrix[0, :],
                 mode="lines",
                 name="Vertical",
             )
         )
-        
+
         # Add axis labels
         fig.update_yaxes(title_text="Spot Size grandient")
-        fig.update_xaxes(title_text="Distance from center")
+        fig.update_xaxes(title_text="Rotation step", dtick=steps[rgb])
         fig.update_layout(title=f"Spot Size Gradient RSRH")
-        fig.update_layout(template="simple_white")
+        fig.update_layout(template="simple_white", xaxis_tickformat = '°')
 
         # Save figure if specified
         if save:
@@ -192,23 +194,17 @@ class Simulation:
             fig.show()
 
     def plot_all_files(
-        self,
-        directory,
-        matrix=True,
-        diagonal=True,
-        rgb="r",
-        save=False
+        self, directory, matrix=True, diagonal=True, rgb="r", save=False
     ):
         """Plot all text file in the directory
-        
+
         Takes a directory and plots all the text files or csv files contained.
         Transfers the rgb argument to the class functions called"""
         directory = pathlib.Path(directory)
         for file in directory.iterdir():
-            if file.suffix == '.txt' or file.suffix == '.csv':
+            if file.suffix == ".txt" or file.suffix == ".csv":
                 self.load_data(directory + "\\" + file)
                 if matrix:
-                    self.plot_matrix(rgb = rgb, save=save)
+                    self.plot_matrix(rgb=rgb, save=save)
                 if diagonal:
-                    self.plot_diagonal(rgb = rgb, save=save)
-
+                    self.plot_diagonal(rgb=rgb, save=save)

@@ -32,10 +32,10 @@ class image_analysis:
         try:
             for file in self.directory.iterdir():
                 if "background" in str(file):
-                    self.background_path = self.directory / file
+                    self.background_path = file
                     print("Background image found")
                 if "display" in str(file):
-                    self.display_path = self.directory / file
+                    self.display_path = file
                     print("display data found")
         except FileNotFoundError:
             print("No background image or display data found, using default")
@@ -147,7 +147,7 @@ class image_analysis:
             display = yaml.safe_load(f)
 
         # read image
-        img = cv.imread(fr"{im_path}")
+        img = cv.imread(rf"{im_path}")
 
         if show:
             cv.imshow("image", img)
@@ -155,7 +155,7 @@ class image_analysis:
 
         # remove background if background path is given
         if background_path:
-            background = cv.imread(fr"{background_path}")
+            background = cv.imread(rf"{background_path}")
             img = cv.subtract(img, background)
 
         if show:
@@ -224,7 +224,7 @@ class image_analysis:
 
     def compute_rms(self, channel="r", show=False):
         """Returns: [(file_name, rms spot size)]
-        
+
         Computes the rms spot size for all images in the directory or for a single image."""
         result = []
         self.channel = channel
@@ -258,13 +258,13 @@ class image_analysis:
                     if show:
                         print(f"{file}: {computed}")
                     result.append([file, computed])
-        if result is None:
+        if result == []:
             raise Exception("No images found in specified directory")
         result = np.array(result)
         result = result[np.argsort(result[:, 0])]
         return result
 
-    def save_to_csv(self, result, filename):
+    def save_to_csv(self, result, filename, full=None):
         """Arguement: result, filename
         Returns: None"""
         column_index = {"r": 3, "g": 2, "b": 1}
@@ -273,5 +273,46 @@ class image_analysis:
             writer.writerow(["Spot Size", "B Spot Size", "G Spot Size", "R Spot Size"])
             for row in result:
                 row_template = [0, 0, 0, 0]
-                row_template[column_index[self.channel]] = row[1]
+                if full:
+                    row_template[column_index[self.channel]] = row
+                else:
+                    row_template[column_index[self.channel]] = row[1]
                 writer.writerow(row_template)
+
+    def complete_ei(self, channel, show):
+        """
+        Argument: target_file
+
+        Takes a directory of images in vertical, horizontal and diagonal directions and returns
+        a formatted csv file with the rms spot size for each image.
+        """
+        # check for diagonal, horizontal and vertical directory paths
+        diagonal_path = self.directory / "diagonal"
+        horizontal_path = self.directory / "horizontal"
+        vertical_path = self.directory / "vertical"
+        if not (
+            diagonal_path.exists()
+            and horizontal_path.exists()
+            and vertical_path.exists()
+        ):
+            raise Exception(
+                "No diagonal, horizontal or vertical directory found in the specified directory"
+            )
+
+        # compute rmss for each directory
+        self.directory = diagonal_path
+        diagonal_result = self.compute_rms(channel, show)[:, 1]
+        self.directory = horizontal_path
+        horizontal_result = self.compute_rms(channel, show)[:, 1]
+        self.directory = vertical_path
+        vertical_result = self.compute_rms(channel, show)[:, 1]
+
+        # combine result in a single array
+        size = int(
+            min(len(diagonal_result), len(horizontal_result), len(vertical_result))
+        )
+        array = np.zeros((size, size))
+        array[0] = horizontal_result[:size]
+        array[:, 0] = vertical_result[:size]
+        array[range(size), range(size)] = diagonal_result[:size]
+        return array.flatten()
