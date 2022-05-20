@@ -64,7 +64,7 @@ class CustomMotion():
             for axis in self.all_axes:
                 axis.wait_until_idle()
 
-    def move_z(self, position):
+    def move_z(self, position, wait=True):
         '''Arguments: position
         Checks for conflict between gimabl then move the x axis to the position'''
         yaw = abs(self.yaw.get_position(Units.ANGLE_RADIANS))
@@ -78,12 +78,28 @@ class CustomMotion():
         distance = 450-max(a,b)+78
         print(f'Max distance is {distance}')
         if a < 528-position and b < 528-position:
-            self.z_axis.move_absolute(position, Units.LENGTH_MILLIMETRES)
+            self.z_axis.move_absolute(position, Units.LENGTH_MILLIMETRES, wait)
             print('The movement is allowed')
         else:
             print('Conflict between gimbal and z axis, making longest movement possible')
-            self.z_axis.move_absolute(distance, Units.LENGTH_MILLIMETRES)
+            self.z_axis.move_absolute(distance, Units.LENGTH_MILLIMETRES, wait)
             print('Moving to distance')
+
+    def move_yaw(self, position):
+        z = self.z_axis.get_position(Units.LENGTH_MILLIMETRES)
+        rad = abs(np.radians(position))
+        a = max(225*np.sin(np.linspace(0,rad,1000)))
+        b = max(229.25834*np.sin(np.linspace(0,rad, 1000) + 0.195258))
+        
+        print(f'Distance from end a {a-79.5} and distance from end b is {b-79.5}')
+        distance = 450-max(a,b)+78
+        if z < distance:
+            print('mouvement possible')
+            self.yaw.move_absolute(position, Units.ANGLE_DEGREES)
+        else:
+            print('Changement de la position de z')
+            self.move_z(distance-1)
+            self.move_yaw(position)
 
 
 
@@ -96,6 +112,15 @@ class CustomMotion():
     def disconnect(self):
         self.connection1.close()
 
-i = CustomMotion(True, 'com5', 'com7')
+    def move_xyz(self, position):
 
+        self.x_axis.move_absolute(position[0], Units.LENGTH_MILLIMETRES, False)
+        self.y_axis.move_absolute(position[1], Units.LENGTH_MILLIMETRES, False)
+        self.move_z(position[2], False)
+        for axis in self.axis_list:
+            axis.wait_until_idle()
+
+
+i = CustomMotion(False, 'com5', 'com7')
+i.move_z(200)
 i.disconnect()
