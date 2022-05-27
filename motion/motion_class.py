@@ -16,7 +16,8 @@ class CustomMotion():
     def __init__(self, home=False, *ports:str):
         '''Arguments: Serial ports
         
-        Initialize the serial port commmunication with zabber motion plateforms'''
+        Initialize the serial port commmunication with zabber motion plateforms
+        and assigns each axis to the corresponding variable'''
         self.connection1 = Connection.open_serial_port(ports[0])
         self.connection2 = Connection.open_serial_port(ports[1])
         device_list = []
@@ -66,7 +67,9 @@ class CustomMotion():
 
     def move_z(self, position, wait=True):
         '''Arguments: position
-        Checks for conflict between gimabl then move the x axis to the position'''
+
+        Checks for conflict with gimbal then move the z axis to the position.
+        If a conflict is detected, the z axis is moved to the closest position'''
         yaw = abs(self.yaw.get_position(Units.ANGLE_RADIANS))
         if yaw > np.pi/2:
             yaw = yaw - (yaw-np.pi/2)
@@ -86,6 +89,10 @@ class CustomMotion():
             print('Moving to distance')
 
     def move_yaw(self, position):
+        """Arguments: position in degrees
+        
+        Checks for conflict with z axis then move the yaw axis to the position.
+        If a conflict is detected, the z axis is moved accordingly, then the yaw axis is moved to the position."""
         z = self.z_axis.get_position(Units.LENGTH_MILLIMETRES)
         rad = abs(np.radians(position))
         a = max(225*np.sin(np.linspace(0,rad,1000)))
@@ -104,6 +111,9 @@ class CustomMotion():
 
 
     def home_rotation(self, axis):
+        '''Arguments: axis
+        
+        Homes the rotary axis and prevents full revolution in the process'''
         position = axis.get_position(Units.ANGLE_DEGREES)
         if position < 0:
             axis.move_relative(abs(position)+1, Units.ANGLE_DEGREES)
@@ -112,15 +122,17 @@ class CustomMotion():
     def disconnect(self):
         self.connection1.close()
 
-    def move_xyz(self, position):
-
-        self.x_axis.move_absolute(position[0], Units.LENGTH_MILLIMETRES, False)
-        self.y_axis.move_absolute(position[1], Units.LENGTH_MILLIMETRES, False)
-        self.move_z(position[2], False)
+    def move_xyz(self, position, units=Units.LENGTH_MILLIMETRES):
+        '''Arguments: position
+        
+        Moves the sliders to position x, y and z'''
+        if position[0]:
+            self.x_axis.move_absolute(position[0], units, False)
+        if position[1]:
+            self.y_axis.move_absolute(position[1], units, False)
+        if position[2]:
+            self.move_z(position[2], False)
         for axis in self.axis_list:
             axis.wait_until_idle()
 
 
-i = CustomMotion(False, 'com5', 'com7')
-i.move_z(200)
-i.disconnect()

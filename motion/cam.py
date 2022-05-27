@@ -107,6 +107,16 @@ def setup_camera(cam: Camera):
             else:
                 abort('Camera does not support a OpenCV compatible format natively. Abort.')
 
+def show(img):
+    scale_percent = 30 # percent of original size
+    width = int(img.shape[1] * scale_percent / 100)
+    height = int(img.shape[0] * scale_percent / 100)
+    dim = (width, height)
+    
+    # resize image
+    resized = cv2.resize(img, dim, interpolation = cv2.INTER_AREA)
+    cv2.imshow('frame', resized)
+
 
 class Handler:
     def __init__(self):
@@ -125,7 +135,7 @@ class Handler:
             print('{} acquired {}'.format(cam, frame), flush=True)
 
             msg = 'Stream from \'{}\'. Press <Enter> to stop stream.'
-            cv2.imshow(msg.format(cam.get_name()), frame.as_opencv_image())
+            show(frame.as_opencv_image())
 
         cam.queue_frame(frame)
 
