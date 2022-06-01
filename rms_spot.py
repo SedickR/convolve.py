@@ -40,102 +40,6 @@ class image_analysis:
         except FileNotFoundError:
             print("No background image or display data found, using default")
 
-    def center_of_mass(
-        self, im_path, display_data, channel="r", background_path=None, show=False
-    ):
-        """Arguement: path to image, yaml display data file path, color channel, path to background image
-        Returns : coordinates of center of mass, image in grayscale, [pixel width, unit]"""
-        # get display data
-        with open(display_data, "r") as f:
-            display = yaml.safe_load(f)
-
-        # read image
-        img = cv.imread(f"{im_path}")
-
-        if show:
-            cv.imshow("image", img)
-            cv.waitKey(0)
-
-        # remove background if background path is given
-        if background_path:
-            background = cv.imread(f"{background_path}")
-            img = cv.subtract(img, background)
-
-        if show:
-            cv.imshow("image", img)
-            cv.waitKey(0)
-
-        # split image into channels
-        b, g, r = cv.split(img)
-        if channel == "b":
-            _, thresh = cv.threshold(b, 15, 255, 0)
-            color = "blue"
-        elif channel == "g":
-            _, thresh = cv.threshold(g, 15, 255, 0)
-            color = "green"
-        else:
-            _, thresh = cv.threshold(r, 8, 255, 0)
-            color = "red"
-
-        if show:
-            cv.imshow("image", thresh)
-            cv.waitKey(0)
-
-        # define center of image
-        center = (int(thresh.shape[1] // 2), int(thresh.shape[0] // 2))
-
-        # mask unwanted pixels based on display measurements
-        cv.circle(
-            thresh,
-            (center[0] - display[color][1], center[1] + display[color][0]),
-            display["noise_px_diameter"],
-            (0, 0, 0),
-            -1,
-        )
-        cv.circle(
-            thresh,
-            (center[0] + display[color][0], center[1] + display[color][1]),
-            display["noise_px_diameter"],
-            (0, 0, 0),
-            -1,
-        )
-        cv.circle(
-            thresh,
-            (center[0] - display[color][0], center[1] - display[color][1]),
-            display["noise_px_diameter"],
-            (0, 0, 0),
-            -1,
-        )
-        cv.circle(
-            thresh,
-            (center[0] + display[color][1], center[1] - display[color][0]),
-            display["noise_px_diameter"],
-            (0, 0, 0),
-            -1,
-        )
-        if show:
-            cv.imshow("image", thresh)
-            cv.waitKey(0)
-
-        thresh = self.remove_outliers(thresh, center)
-
-        if show:
-            cv.imshow("image", thresh)
-            cv.waitKey(0)
-
-        # create a meshgrid for coordinate calculation
-        x_m, y_m = np.meshgrid(
-            np.arange(0, thresh.shape[1]),
-            np.arange(0, thresh.shape[0]),
-            sparse=False,
-            indexing="xy",
-        )
-
-        # compute center of mass
-        x_c = int(np.sum(x_m * thresh) / np.sum(thresh))
-        y_c = int(np.sum(y_m * thresh) / np.sum(thresh))
-
-        return (x_c, y_c), thresh, display["pixel_diameter"]
 
     def center_of_mass_cca(
         self, im_path, display_data, channel="r", background_path=None, show=False
@@ -162,7 +66,7 @@ class image_analysis:
             cv.imshow("image", img)
             cv.waitKey(0)
 
-        value = 15
+        value = 4
 
         # split image into channels
         b, g, r = cv.split(img)
