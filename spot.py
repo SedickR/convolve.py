@@ -65,14 +65,14 @@ if __name__ == "__main__":
         if save is False:
             choice = input("Do you want to save the results? (y/n) ")
             if choice == "y":
-                filename = input("Enter a filename: ")
+                filename = input("Enter a filename: ") + ".csv"
                 analyse.save_to_csv(results, filename, full=True)
             else:
                 save = False
 
     if save:
         # ask for file name
-        filename = input("Enter a filename: ")
+        filename = input("Enter a filename: ") + '.csv'
         analyse.save_to_csv(results, filename)
 
     if terminal.plot:

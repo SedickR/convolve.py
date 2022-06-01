@@ -25,8 +25,7 @@ class Simulation:
     def load_data(self, filename):
         """Load data from a Zemax .txt file
 
-        Allows to load data from a single text file and stores it in a pandas dataframe
-        as a global variable."""
+        Loads data from a single text file and stores it in a pandas dataframe."""
         self.df = pd.read_csv(filename, sep=";")
         self.matrix_s = (
             np.resize(np.array(self.df.loc[:, "Spot Size"]), (12, 12)),
@@ -126,7 +125,7 @@ class Simulation:
         else:
             raise ValueError("rgb must be 'r', 'g' or 'b' or a combination of those")
 
-        # compute gradient
+        # compute gradient of diagonal and plot
         diag = matrix.diagonal()
         grad = np.gradient(diag)
         fig = go.Figure(
@@ -138,6 +137,7 @@ class Simulation:
                 line=dict(shape="linear", color="black"),
             )
         )
+        # Compute gradient of vertical line and plot
         grad_v = np.gradient(matrix[:, 0])
         fig.add_trace(
             go.Scatter(
@@ -148,6 +148,7 @@ class Simulation:
                 line=dict(shape="linear", color="black", dash="dash"),
             )
         )
+        #compute gradient of horizontal line and plot
         grad_h = np.gradient(matrix[0, :])
         fig.add_trace(
             go.Scatter(
@@ -158,6 +159,7 @@ class Simulation:
                 line=dict(shape="linear", color="black", dash="dot"),
             )
         )
+        #add plot of horizontal line
         fig.add_trace(
             go.Scatter(
                 x=np.arange(0, len(matrix[:, 0])+3, step=steps[rgb]),
@@ -166,6 +168,7 @@ class Simulation:
                 name="Horizontal",
             )
         )
+        #add plot of vertical line
         fig.add_trace(
             go.Scatter(
                 x=np.arange(0, (len(matrix[0, :])+2)*steps[rgb], step=steps[rgb]),
@@ -174,6 +177,34 @@ class Simulation:
                 name="Vertical",
             )
         )
+
+        #Compute a third degree polynomial fit to the vertical and horizontal lines
+        fit_v = np.polyfit(np.arange(0, len(grad_v)*steps[rgb], step=steps[rgb]), grad_v, 4)
+        fit_h = np.polyfit(np.arange(0, len(grad_h)*steps[rgb], step=steps[rgb]), grad_h, 4)
+        # Compute the polynomial values of the fit
+        poly_v = np.polyval(fit_v, np.arange(0, len(grad_v)*steps[rgb], step=steps[rgb]))
+        poly_h = np.polyval(fit_h, np.arange(0, len(grad_h)*steps[rgb], step=steps[rgb]))
+        # Add the polyline to the plot
+        fig.add_trace(
+            go.Scatter(
+                x=np.arange(0, len(poly_v)*steps[rgb], step=steps[rgb]),
+                y=poly_v,
+                mode="lines",
+                name="Vertical fit",
+            )
+        )
+        fig.add_trace(
+            go.Scatter(
+                x=np.arange(0, len(poly_h)*steps[rgb], step=steps[rgb]),
+                y=poly_h,
+                mode="lines",
+                name="Horizontal fit",
+            )
+        )
+
+        # Print the fit equation
+        print(f"Vertical fit: {fit_v}")
+        print(f"Horizontal fit: {fit_h}")
 
         # Add axis labels
         fig.update_yaxes(title_text="Spot Size grandient")

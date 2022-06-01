@@ -201,11 +201,12 @@ class image_analysis:
         if show:
             cv.imshow("image", label_image)
             cv.waitKey(0)
+            cv.destroyAllWindows()
 
         return (
             (int(largest_component_centroid[0]), int(largest_component_centroid[1])),
             label_image,
-            display["pixel_diameter"],
+            display["pixel_diameter"]
         )
 
     def rms_spot(self, center, img_gray, units):
@@ -229,8 +230,7 @@ class image_analysis:
         result = []
         self.channel = channel
         if self.image_path:
-            result.append(
-                [
+            computed = [
                     self.image_path.name,
                     self.rms_spot(
                         *self.center_of_mass_cca(
@@ -239,10 +239,10 @@ class image_analysis:
                             channel,
                             self.background_path,
                             show,
-                        )
-                    ),
-                ]
-            )
+                    ))]
+            if show:
+                print(f'{computed[0]}: {computed[1]}')
+            result.append(computed)
         else:
             for file in self.directory.iterdir():
                 if file.suffix == ".bmp" and "background" not in str(file):
@@ -253,8 +253,7 @@ class image_analysis:
                             channel,
                             self.background_path,
                             show,
-                        )
-                    )
+                        ))
                     if show:
                         print(f"{file}: {computed}")
                     result.append([file, computed])
