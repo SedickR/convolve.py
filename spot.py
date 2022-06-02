@@ -25,6 +25,8 @@ def analyser_la_ligne_de_commande():
         action="store_true",
     )
     parser.add_argument("-rgb", help="Select a color channel", action="store_true")
+
+    parser.add_argument("-l", "--line_plot", help="Compute and graph the plot size of series of images", action="store_true")
     return parser.parse_args()
 
 
@@ -85,3 +87,12 @@ if __name__ == "__main__":
         plotting.load_data(terminal.load[0])
         plotting.plot_diagonal(rgb=rgb, save=save)
         plotting.plot_matrix(rgb=rgb, save=save)
+
+    if terminal.line_plot:
+        choice = input("Do you want to save plots? (y/n) ")
+        if choice == "y":
+            save = True
+        else:
+            save = False
+        plotting = Simulation()
+        plotting.plot_line(terminal.load[0], rgb=rgb, save=save)

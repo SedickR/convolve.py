@@ -3,6 +3,7 @@ import numpy as np
 import plotly.graph_objects as go
 import pandas as pd
 import time, datetime, os, pathlib
+from rms_spot import image_analysis
 
 # TODO:
 # - 0.75217, pas de rotation cas idéal
@@ -21,6 +22,7 @@ class Simulation:
         self.matrix_r = None
         self.matrix_g = None
         self.matrix_b = None
+        self.steps = {'r': 0.75217, 'g': 0.75217, 'b':0.75217}
 
     def load_data(self, filename):
         """Load data from a Zemax .txt file
@@ -111,7 +113,7 @@ class Simulation:
 
         Plots the gradient of the three axis of interest of spot size of the loaded data.
         Saves the figure if save is True."""
-        steps = {'r': 0.75217, 'g': 0.75217, 'b':0.75217}
+        
         if "r" in rgb and "g" in rgb and "b" in rgb:
             self.plot_diagonal(rgb="r", save=save)
             self.plot_diagonal(rgb="g", save=save)
@@ -126,22 +128,23 @@ class Simulation:
             raise ValueError("rgb must be 'r', 'g' or 'b' or a combination of those")
 
         # compute gradient of diagonal and plot
-        diag = matrix.diagonal()
-        grad = np.gradient(diag)
-        fig = go.Figure(
-            data=go.Scatter(
-                x=np.arange(0, len(grad)*steps[rgb], step=steps[rgb]),
-                y=grad,
-                mode="lines",
-                name="diagonal",
-                line=dict(shape="linear", color="black"),
-            )
-        )
+        #diag = matrix.diagonal()
+        #grad = np.gradient(diag)
+        #fig = go.Figure(
+        #    data=go.Scatter(
+        #        x=np.arange(0, len(grad)*steps[rgb], step=steps[rgb]),
+        #        y=grad,
+        #        mode="lines",
+        #        name="diagonal",
+        #        line=dict(shape="linear", color="black"),
+        #    )
+        #)
         # Compute gradient of vertical line and plot
         grad_v = np.gradient(matrix[:, 0])
+        fig = go.Figure()
         fig.add_trace(
             go.Scatter(
-                x=np.arange(0, len(grad_v)*steps[rgb], step=steps[rgb]),
+                x=np.arange(0, len(grad_v)*self.steps[rgb], step=self.steps[rgb]),
                 y=grad_v,
                 mode="lines",
                 name="vertical",
@@ -152,7 +155,7 @@ class Simulation:
         grad_h = np.gradient(matrix[0, :])
         fig.add_trace(
             go.Scatter(
-                x=np.arange(0, len(grad_h)*steps[rgb], step=steps[rgb]),
+                x=np.arange(0, len(grad_h)*self.steps[rgb], step=self.steps[rgb]),
                 y=grad_h,
                 mode="lines",
                 name="horizontal",
@@ -162,7 +165,7 @@ class Simulation:
         #add plot of horizontal line
         fig.add_trace(
             go.Scatter(
-                x=np.arange(0, len(matrix[:, 0])+3, step=steps[rgb]),
+                x=np.arange(0, len(matrix[:, 0])+3, step=self.steps[rgb]),
                 y=matrix[:, 0],
                 mode="lines",
                 name="Horizontal",
@@ -171,23 +174,25 @@ class Simulation:
         #add plot of vertical line
         fig.add_trace(
             go.Scatter(
-                x=np.arange(0, (len(matrix[0, :])+2)*steps[rgb], step=steps[rgb]),
+                x=np.arange(0, (len(matrix[0, :])+2)*self.steps[rgb], step=self.steps[rgb]),
                 y=matrix[0, :],
                 mode="lines",
                 name="Vertical",
             )
         )
 
-        #Compute a third degree polynomial fit to the vertical and horizontal lines
-        fit_v = np.polyfit(np.arange(0, len(grad_v)*steps[rgb], step=steps[rgb]), grad_v, 4)
-        fit_h = np.polyfit(np.arange(0, len(grad_h)*steps[rgb], step=steps[rgb]), grad_h, 4)
+        #Compute a fourth degree polynomial fit to the vertical and horizontal lines
+        fit_v = np.polyfit(np.arange(0, len(grad_v)*self.steps[rgb], step=self.steps[rgb]), grad_v, 4)
+        fit_h = np.polyfit(np.arange(0, len(grad_h)*self.steps[rgb], step=self.steps[rgb]), grad_h, 4)
+
         # Compute the polynomial values of the fit
-        poly_v = np.polyval(fit_v, np.arange(0, len(grad_v)*steps[rgb], step=steps[rgb]))
-        poly_h = np.polyval(fit_h, np.arange(0, len(grad_h)*steps[rgb], step=steps[rgb]))
+        poly_v = np.polyval(fit_v, np.arange(0, len(grad_v)*self.steps[rgb], step=self.steps[rgb]))
+        poly_h = np.polyval(fit_h, np.arange(0, len(grad_h)*self.steps[rgb], step=self.steps[rgb]))
+
         # Add the polyline to the plot
         fig.add_trace(
             go.Scatter(
-                x=np.arange(0, len(poly_v)*steps[rgb], step=steps[rgb]),
+                x=np.arange(0, len(poly_v)*self.steps[rgb], step=self.steps[rgb]),
                 y=poly_v,
                 mode="lines",
                 name="Vertical fit",
@@ -195,7 +200,7 @@ class Simulation:
         )
         fig.add_trace(
             go.Scatter(
-                x=np.arange(0, len(poly_h)*steps[rgb], step=steps[rgb]),
+                x=np.arange(0, len(poly_h)*self.steps[rgb], step=self.steps[rgb]),
                 y=poly_h,
                 mode="lines",
                 name="Horizontal fit",
@@ -208,7 +213,7 @@ class Simulation:
 
         # Add axis labels
         fig.update_yaxes(title_text="Spot Size grandient")
-        fig.update_xaxes(title_text="Rotation step", dtick=steps[rgb])
+        fig.update_xaxes(title_text="Rotation step", dtick=self.steps[rgb])
         fig.update_layout(title=f"Spot Size Gradient RSRH")
         fig.update_layout(template="simple_white", xaxis_tickformat = '°')
 
@@ -228,7 +233,7 @@ class Simulation:
         self, directory, matrix=True, diagonal=True, rgb="r", save=False
     ):
         """Plot all text file in the directory
-
+        
         Takes a directory and plots all the text files or csv files contained.
         Transfers the rgb argument to the class functions called"""
         directory = pathlib.Path(directory)
@@ -239,3 +244,66 @@ class Simulation:
                     self.plot_matrix(rgb=rgb, save=save)
                 if diagonal:
                     self.plot_diagonal(rgb=rgb, save=save)
+
+    def plot_line(self, directory, rgb="r", save=False):
+        """Takes a directory or a csv file and plots the horizontal or vertical lines."""
+
+        file = pathlib.Path(directory)
+
+        if file.suffix == ".txt" or file.suffix == ".csv":
+            data = np.loadtxt(file, delimiter=";", skiprows=1)
+            rows = {"b":1, "g":2, "r":3}
+            fig = go.Figure()
+            fig.add_trace(
+                go.Scatter(
+                    x=np.arange(0, len(data)*self.steps[rgb], step=self.steps[rgb]),
+                    y=data[:, rows[rgb]],
+                    mode="lines",
+                    name='spot size',
+                    line=dict(shape="linear", color="black", dash="dash"),
+                )
+            )
+            grad = np.gradient(data[:, rows[rgb]])
+            fig.add_trace(
+                go.Scatter(
+                    x=np.arange(0, len(grad)*self.steps[rgb], step=self.steps[rgb]),
+                    y=grad,
+                    mode="lines",
+                    name="gradient",
+                    line=dict(shape="linear", color="black"),
+                )
+            )
+        if file.is_dir():
+            directory = image_analysis(file)
+            data = directory.compute_rms()
+            fig = go.Figure()
+            fig.add_trace(
+                go.Scatter(
+                    x=np.arange(0, len(data)*self.steps[rgb], step=self.steps[rgb]),
+                    y=data[:, 1],
+                    mode="lines",
+                    line=dict(shape="linear", color="black", dash="dash"),
+                )
+            )
+            grad = np.gradient(data[:, 1])
+            fig.add_trace(
+                go.Scatter(
+                    x=np.arange(0, len(grad)*self.steps[rgb], step=self.steps[rgb]),
+                    y=grad,
+                    mode="lines",
+                    line=dict(shape="linear", color="black"),
+                )
+            )
+        fig.update_xaxes(title_text="Rotation step", dtick=self.steps[rgb])
+        if save:
+            fig.write_image(
+                f'line\\line_{datetime.datetime.now().isoformat("_", "minutes").replace(":", "")}.pdf'
+            )
+            time.sleep(1)
+            fig.write_image(
+                f'line\\line_{datetime.datetime.now().isoformat("_", "minutes").replace(":", "")}.pdf'
+            )
+        else:
+            fig.show()
+
+
