@@ -1,0 +1,22 @@
+Image analysis ray table listing
+
+File : \\usagers2.copl.ulaval.ca\usagers\SERAB1\My Documents\Zemaxe_3D_project\Best_for_simulation\2022-01\single_lens_MLA_630_FT_stop_convex_best_collimat_2022-06_FoV_fullEI_r1.52_theta2.zmx
+Title: 
+Date : 2022-06-03
+Configuration 1 of 144
+
+
+Object field: 0.0000 mm
+Field Width                    : 0.0275772 Millimeters
+
+Number of rays/pixel/unit intensity: 250001
+
+Efficiency          : 100.000%
+Total Power         : 1.000E+00 Watts
+Rays Launched       : 250001
+Rays Through        : 250001
+X-Direction Centroid:  -8.20723E-05
+Y-Direction Centroid:  -1.56998E-05
+X-Direction RMS     :   1.74493E-02
+Y-Direction RMS     :   1.74382E-02
+Radial RMS          :   2.46692E-02
