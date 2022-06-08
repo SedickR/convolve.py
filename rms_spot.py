@@ -1,7 +1,7 @@
 import cv2 as cv
 import numpy as np
 import os, yaml, time, csv
-import pathlib, typing
+import pathlib
 
 
 class image_analysis:
@@ -11,39 +11,43 @@ class image_analysis:
     a display and lens array using a series of digital images.
     """
 
-    def __init__(self, path: pathlib.Path):
+    def __init__(self, path: pathlib.Path = None, img: np.array = None):
         """Arguement: path to image or directory containing images"""
-        path = pathlib.Path(path)
 
+        self.img = None
         self.channel = None
-        if path.suffix == ".bmp" or path.suffix == ".png":
-            self.directory = path.parent
-            print(type(self.directory))
-            self.image_path = path
-            print("Single image mode")
-        else:
-            self.image_path = None
-            self.directory = path
-        # retrieve background image, and display data if they exist
+        self.image_path = None
         self.display_path = None
         self.background_path = None
         self.background = None
+        self.directory = None
         self.display_path = pathlib.Path("default_display.yaml")
+
         try:
-            for file in self.directory.iterdir():
-                if "background" in str(file):
-                    self.background_path = file
-                    print("Background image found")
-                if "display" in str(file):
-                    self.display_path = file
-                    print("display data found")
-        except FileNotFoundError:
-            print("No background image or display data found, using default")
+            path = pathlib.Path(path)
+            if path.suffix == ".bmp" or path.suffix == ".png":
+                self.directory = path.parent
+                self.image_path = path
+                print("Single image mode")
+            else:
+                self.directory = path
+            # retrieve background image, and display data if they exist
+            try:
+                for file in self.directory.iterdir():
+                    if "background" in str(file):
+                        self.background_path = file
+                        print("Background image found")
+                    if "display" in str(file):
+                        self.display_path = file
+                        print("display data found")
+            except FileNotFoundError:
+                print("No background image or display data found, using default")
+        except TypeError:
+            print("No path given, using direct image mode")
+            self.img = img
 
 
-    def center_of_mass_cca(
-        self, im_path, display_data, channel="r", background_path=None, show=False
-    ):
+    def center_of_mass_cca(self, im_path, display_data, channel="r", background_path=None, show=False, img=None):
         """Arguement: path to image, yaml display data file path, color channel, path to background image
         Returns : coordinates of center of mass, image in grayscale, [pixel width, unit]"""
         # get display data
@@ -51,7 +55,9 @@ class image_analysis:
             display = yaml.safe_load(f)
 
         # read image
-        img = cv.imread(rf"{im_path}")
+        if im_path:
+            img = cv.imdecode(np.fromfile(im_path, dtype=np.uint8),
+                                cv.IMREAD_UNCHANGED)
 
         if show:
             cv.imshow("image", img)
@@ -62,11 +68,11 @@ class image_analysis:
             background = cv.imread(rf"{background_path}")
             img = cv.subtract(img, background)
 
-        if show:
+        if show and background_path:
             cv.imshow("image", img)
             cv.waitKey(0)
 
-        value = 4
+        value = 50
 
         # split image into channels
         b, g, r = cv.split(img)
@@ -147,7 +153,7 @@ class image_analysis:
             if show:
                 print(f'{computed[0]}: {computed[1]}')
             result.append(computed)
-        else:
+        elif self.directory:
             for file in self.directory.iterdir():
                 if file.suffix == ".bmp" and "background" not in str(file):
                     computed = self.rms_spot(
@@ -161,6 +167,19 @@ class image_analysis:
                     if show:
                         print(f"{file}: {computed}")
                     result.append([file, computed])
+        else:
+            computed = self.rms_spot(
+                        *self.center_of_mass_cca(
+                            self.image_path,
+                            self.display_path,
+                            channel,
+                            self.background_path,
+                            show,
+                            self.img
+                    ))
+            if show:
+                print(f'Result (um): {computed}')
+            return computed
         if result == []:
             raise Exception("No images found in specified directory")
         result = np.array(result)

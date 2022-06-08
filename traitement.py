@@ -4,6 +4,7 @@ import plotly.graph_objects as go
 import pandas as pd
 import time, datetime, os, pathlib
 from rms_spot import image_analysis
+import cv2 as cv
 
 # TODO:
 # - 0.75217, pas de rotation cas idéal
@@ -128,93 +129,106 @@ class Simulation:
             raise ValueError("rgb must be 'r', 'g' or 'b' or a combination of those")
 
         # compute gradient of diagonal and plot
-        #diag = matrix.diagonal()
-        #grad = np.gradient(diag)
-        #fig = go.Figure(
-        #    data=go.Scatter(
-        #        x=np.arange(0, len(grad)*steps[rgb], step=steps[rgb]),
-        #        y=grad,
-        #        mode="lines",
-        #        name="diagonal",
-        #        line=dict(shape="linear", color="black"),
-        #    )
-        #)
-        # Compute gradient of vertical line and plot
-        grad_v = np.gradient(matrix[:, 0])
-        fig = go.Figure()
-        fig.add_trace(
-            go.Scatter(
-                x=np.arange(0, len(grad_v)*self.steps[rgb], step=self.steps[rgb]),
-                y=grad_v,
-                mode="lines",
-                name="vertical",
-                line=dict(shape="linear", color="black", dash="dash"),
+        diag = matrix.diagonal()
+        if False:
+            grad = np.gradient(diag)
+            fig = go.Figure(
+                data=go.Scatter(
+                    x=np.arange(0, len(grad)*self.steps[rgb], step=self.steps[rgb]),
+                    y=grad,
+                    mode="lines",
+                    name="diagonal",
+                    line=dict(shape="linear", color="black"),
+                )
             )
-        )
-        #compute gradient of horizontal line and plot
-        grad_h = np.gradient(matrix[0, :])
-        fig.add_trace(
-            go.Scatter(
-                x=np.arange(0, len(grad_h)*self.steps[rgb], step=self.steps[rgb]),
-                y=grad_h,
-                mode="lines",
-                name="horizontal",
-                line=dict(shape="linear", color="black", dash="dot"),
+            # Compute gradient of vertical line and plot
+            grad_v = np.gradient(matrix[:, 0])
+            fig.add_trace(
+                go.Scatter(
+                    x=np.arange(0, len(grad_v)*self.steps[rgb], step=self.steps[rgb]),
+                    y=grad_v,
+                    mode="lines",
+                    name="vertical",
+                    line=dict(shape="linear", color="red", dash="dash"),
+                )
             )
-        )
-        #add plot of horizontal line
-        fig.add_trace(
-            go.Scatter(
-                x=np.arange(0, len(matrix[:, 0])+3, step=self.steps[rgb]),
-                y=matrix[:, 0],
-                mode="lines",
-                name="Horizontal",
+            #compute gradient of horizontal line and plot
+            grad_h = np.gradient(matrix[0, :])
+            fig.add_trace(
+                go.Scatter(
+                    x=np.arange(0, len(grad_h)*self.steps[rgb], step=self.steps[rgb]),
+                    y=grad_h,
+                    mode="lines",
+                    name="horizontal",
+                    line=dict(shape="linear", color="black", dash="dot"),
+                )
             )
-        )
-        #add plot of vertical line
-        fig.add_trace(
-            go.Scatter(
-                x=np.arange(0, (len(matrix[0, :])+2)*self.steps[rgb], step=self.steps[rgb]),
-                y=matrix[0, :],
-                mode="lines",
-                name="Vertical",
+        if True:
+            #add diagonal line
+            fig = go.Figure()
+            fig.add_trace(
+                go.Scatter(
+                    x=np.arange(0, len(diag)*self.steps[rgb], step=self.steps[rgb]),
+                    y=diag,
+                    mode="lines",
+                    name="diagonal",
+                    line=dict(shape="linear", color="black")
+                ))
+            #add plot of horizontal line
+            fig.add_trace(
+                go.Scatter(
+                    x=np.arange(0, len(matrix[:, 0])+3, step=self.steps[rgb]),
+                    y=matrix[:, 0],
+                    mode="lines",
+                    name="Horizontal",
+                    line=dict(shape="linear", color="black", dash="dot")
+                )
             )
-        )
+            #add plot of vertical line
+            fig.add_trace(
+                go.Scatter(
+                    x=np.arange(0, (len(matrix[0, :])+2)*self.steps[rgb], step=self.steps[rgb]),
+                    y=matrix[0, :],
+                    mode="lines",
+                    name="Vertical",
+                    line=dict(shape="linear", color="red", dash="dash"),
+                )
+            )
+        if False:
+            #Compute a fourth degree polynomial fit to the vertical and horizontal lines
+            fit_v = np.polyfit(np.arange(0, len(grad_v)*self.steps[rgb], step=self.steps[rgb]), grad_v, 4)
+            fit_h = np.polyfit(np.arange(0, len(grad_h)*self.steps[rgb], step=self.steps[rgb]), grad_h, 4)
 
-        #Compute a fourth degree polynomial fit to the vertical and horizontal lines
-        fit_v = np.polyfit(np.arange(0, len(grad_v)*self.steps[rgb], step=self.steps[rgb]), grad_v, 4)
-        fit_h = np.polyfit(np.arange(0, len(grad_h)*self.steps[rgb], step=self.steps[rgb]), grad_h, 4)
+            # Compute the polynomial values of the fit
+            poly_v = np.polyval(fit_v, np.arange(0, len(grad_v)*self.steps[rgb], step=self.steps[rgb]))
+            poly_h = np.polyval(fit_h, np.arange(0, len(grad_h)*self.steps[rgb], step=self.steps[rgb]))
 
-        # Compute the polynomial values of the fit
-        poly_v = np.polyval(fit_v, np.arange(0, len(grad_v)*self.steps[rgb], step=self.steps[rgb]))
-        poly_h = np.polyval(fit_h, np.arange(0, len(grad_h)*self.steps[rgb], step=self.steps[rgb]))
-
-        # Add the polyline to the plot
-        fig.add_trace(
-            go.Scatter(
-                x=np.arange(0, len(poly_v)*self.steps[rgb], step=self.steps[rgb]),
-                y=poly_v,
-                mode="lines",
-                name="Vertical fit",
+            # Add the polyline to the plot
+            fig.add_trace(
+                go.Scatter(
+                    x=np.arange(0, len(poly_v)*self.steps[rgb], step=self.steps[rgb]),
+                    y=poly_v,
+                    mode="lines",
+                    name="Vertical fit",
+                )
             )
-        )
-        fig.add_trace(
-            go.Scatter(
-                x=np.arange(0, len(poly_h)*self.steps[rgb], step=self.steps[rgb]),
-                y=poly_h,
-                mode="lines",
-                name="Horizontal fit",
+            fig.add_trace(
+                go.Scatter(
+                    x=np.arange(0, len(poly_h)*self.steps[rgb], step=self.steps[rgb]),
+                    y=poly_h,
+                    mode="lines",
+                    name="Horizontal fit",
+                )
             )
-        )
 
-        # Print the fit equation
-        print(f"Vertical fit: {fit_v}")
-        print(f"Horizontal fit: {fit_h}")
+            # Print the fit equation
+            print(f"Vertical fit: {fit_v}")
+            print(f"Horizontal fit: {fit_h}")
 
         # Add axis labels
-        fig.update_yaxes(title_text="Spot Size grandient")
+        fig.update_yaxes(title_text="Spot Size")
         fig.update_xaxes(title_text="Rotation step", dtick=self.steps[rgb])
-        fig.update_layout(title=f"Spot Size Gradient RSRH")
+        fig.update_layout(title=f"Spot Size RSRH")
         fig.update_layout(template="simple_white", xaxis_tickformat = '°')
 
         # Save figure if specified
@@ -306,4 +320,29 @@ class Simulation:
         else:
             fig.show()
 
+    def map_range(self, x, in_min, in_max, out_min, out_max):
+        return (x - in_min) * (out_max - out_min) // (in_max - in_min) + out_min
+
+    def generate_image(self, txt_path, channel):
+        "Generate a bmp image with opencv from a zemax array txt file and colorizes it in a given channel"
+
+        # Load the array
+        array = np.loadtxt(txt_path, skiprows=17)
+
+        # Create a new image
+        image = np.zeros((array.shape[0], array.shape[1], 3), dtype=np.uint8)
+
+        max_value = np.max(array)
+
+        # Colorize the image
+        for i in range(array.shape[0]):
+            for j in range(array.shape[1]):
+                if channel == "b":
+                    image[i, j, 0] = self.map_range(array[i, j], 0, max_value, 0, 255)
+                elif channel == "g":
+                    image[i, j, 1] = self.map_range(array[i, j], 0, max_value, 0, 255)
+                elif channel == "r":
+                    image[i, j, 2] = self.map_range(array[i, j], 0, max_value, 0, 255)
+
+        return image
 
