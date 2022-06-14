@@ -49,7 +49,7 @@ class image_analysis:
 
     def center_of_mass_cca(self, im_path, display_data, channel="r", background_path=None, show=False, img=None):
         """Arguement: path to image, yaml display data file path, color channel, path to background image
-        Returns : coordinates of center of mass, image in grayscale, [pixel width, unit]"""
+        Returns : coordinates of center of mass, image in grayscale, [pixel width, unit], img"""
         # get display data
         with open(display_data, "r") as f:
             display = yaml.safe_load(f)
@@ -72,19 +72,22 @@ class image_analysis:
             cv.imshow("image", img)
             cv.waitKey(0)
 
-        value = 50
+        value = 0.1
 
         # split image into channels
         b, g, r = cv.split(img)
         if channel == "b":
             _, thresh = cv.threshold(b, value, 255, 0)
             color = "blue"
+            img = b
         elif channel == "g":
             _, thresh = cv.threshold(g, value, 255, 0)
             color = "green"
+            img = g
         else:
             _, thresh = cv.threshold(r, value, 255, 0)
             color = "red"
+            img = r
 
         if show:
             cv.imshow("image", thresh)
@@ -109,22 +112,23 @@ class image_analysis:
         label_image[labels == largest_component + 1] = 255
 
         if show:
-            cv.imshow("image", label_image)
+            cv.imshow("avant", label_image)
             cv.waitKey(0)
             cv.destroyAllWindows()
 
         return (
             (int(largest_component_centroid[0]), int(largest_component_centroid[1])),
             label_image,
-            display["pixel_diameter"]
+            display["pixel_diameter"],
+            img
         )
 
-    def rms_spot(self, center, img_gray, units):
+    def rms_spot(self, center, img_gray, units, img):
         """Arguement: center of mass, grayscale image, [pixel width, unit]
         Returns : rms spot size, units"""
         # Find all non-zero pixels in the image
         non_zero = cv.findNonZero(img_gray)
-
+        
         # Distance of all non-zero pixels from the center of mass
         dist = np.sqrt(
             (non_zero[:, :, 0] - center[0]) ** 2 + (non_zero[:, :, 1] - center[1]) ** 2
@@ -132,6 +136,7 @@ class image_analysis:
 
         # Return the rms spot size
         return np.sqrt(np.mean(dist**2)) * units[0]
+        #return np.sqrt(np.sum(img[non_zero[:, :, 1], non_zero[:, :, 0]]*dist**2)/np.sum(img[non_zero[:, :, 1], non_zero[:, :, 0]])) * units[0]
 
     def compute_rms(self, channel="r", show=False):
         """Returns: [(file_name, rms spot size)]
@@ -185,6 +190,19 @@ class image_analysis:
         result = np.array(result)
         result = result[np.argsort(result[:, 0])]
         return result
+
+    def compute_lateral_color(self, red, blue, show=False):
+        """Arguments: red image, blue image, verbosity
+
+        Returns: dist"""
+        center_red, _, _, _ = self.center_of_mass_cca(self.image_path, self.display_path, self.channel, self.background_path, show, red)
+
+        center_blue, _, _, _ = self.center_of_mass_cca(self.image_path, self.display_path, 'b', self.background_path, show, blue)
+
+        dist = np.sqrt((center_red[0] - center_blue[0])**2 + (center_red[1] - center_blue[1])**2)
+
+        print(dist)
+        
 
     def save_to_csv(self, result, filename, full=None):
         """Arguement: result, filename

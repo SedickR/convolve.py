@@ -308,7 +308,7 @@ class Simulation:
                     line=dict(shape="linear", color="black"),
                 )
             )
-        fig.update_xaxes(title_text="Rotation step", dtick=self.steps[rgb])
+        fig.update_xaxes(title_text="Viewing angle [°]", dtick=self.steps[rgb])
         if save:
             fig.write_image(
                 f'line\\line_{datetime.datetime.now().isoformat("_", "minutes").replace(":", "")}.pdf'
@@ -327,22 +327,22 @@ class Simulation:
         "Generate a bmp image with opencv from a zemax array txt file and colorizes it in a given channel"
 
         # Load the array
-        array = np.loadtxt(txt_path, skiprows=17)
-
+        array = np.loadtxt(txt_path, skiprows=52921)
         # Create a new image
         image = np.zeros((array.shape[0], array.shape[1], 3), dtype=np.uint8)
 
-        max_value = np.max(array)
+        max_value = 255
+
+        tresh = lambda x: max_value if x > max_value else x
 
         # Colorize the image
         for i in range(array.shape[0]):
             for j in range(array.shape[1]):
                 if channel == "b":
-                    image[i, j, 0] = self.map_range(array[i, j], 0, max_value, 0, 255)
+                    image[i, j, 0] = array[i, j]*255
                 elif channel == "g":
-                    image[i, j, 1] = self.map_range(array[i, j], 0, max_value, 0, 255)
+                    image[i, j, 1] = array[i, j]*255
                 elif channel == "r":
-                    image[i, j, 2] = self.map_range(array[i, j], 0, max_value, 0, 255)
-
+                    image[i, j, 2] = array[i, j]*255
         return image
 
