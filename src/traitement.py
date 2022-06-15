@@ -4,7 +4,7 @@ import plotly.graph_objects as go
 import pandas as pd
 import time, datetime, os, pathlib
 from rms_spot import image_analysis
-import cv2 as cv
+import cv2
 
 # TODO:
 # - 0.75217, pas de rotation cas idéal
@@ -321,13 +321,14 @@ class Simulation:
             fig.show()
 
     def map_range(self, x, in_min, in_max, out_min, out_max):
+        """Map a value from one range to another"""
         return (x - in_min) * (out_max - out_min) // (in_max - in_min) + out_min
 
     def generate_image(self, txt_path, channel):
         "Generate a bmp image with opencv from a zemax array txt file and colorizes it in a given channel"
 
         # Load the array
-        array = np.loadtxt(txt_path, skiprows=52921)
+        array = np.loadtxt(txt_path, skiprows=17)
         # Create a new image
         image = np.zeros((array.shape[0], array.shape[1], 3), dtype=np.uint8)
 
@@ -339,10 +340,10 @@ class Simulation:
         for i in range(array.shape[0]):
             for j in range(array.shape[1]):
                 if channel == "b":
-                    image[i, j, 0] = array[i, j]*255
+                    image[i, j, 0] = tresh(array[i, j]/0.41322)
                 elif channel == "g":
-                    image[i, j, 1] = array[i, j]*255
+                    image[i, j, 1] = tresh(array[i, j]/0.41322)
                 elif channel == "r":
-                    image[i, j, 2] = array[i, j]*255
+                    image[i, j, 2] = tresh(array[i, j]/0.41322)
         return image
 
