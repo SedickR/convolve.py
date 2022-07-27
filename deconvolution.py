@@ -58,7 +58,7 @@ deconv = deconvolve(conv, object_normalized)
 # deconvolution between image and object
 deconv2 = deconvolve(image_zemax_normalized, psf_normalized)
 
-deconv3 = restoration.wiener(image_zemax_normalized, object_normalized, 100000)
+deconv3 = restoration.wiener(image_zemax_normalized, psf_normalized, 100000)
 
 #deconv3 = deconvolve2(object_normalized, psf, noise)
 # deconv2_normalized = deconv2 - np.min(deconv2)
