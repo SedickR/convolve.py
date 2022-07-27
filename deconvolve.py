@@ -10,11 +10,11 @@ object_path = askopenfile()
 psf_path = askopenfile()
 image_zemax_path = askopenfile()
 
-# data
 object = np.loadtxt(object_path, skiprows=17, delimiter='\t')
 psf = np.loadtxt(psf_path, skiprows=18, delimiter='\t')
 image_zemax = np.loadtxt(image_zemax_path, skiprows=17, delimiter='\t')
 
+# data processing
 object_normalized = object - np.min(object)
 object_normalized = ((object_normalized / np.max(object_normalized)) * 255).astype(np.uint8)
 #psf_normalized = psf - np.min(psf)
