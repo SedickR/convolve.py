@@ -1,5 +1,6 @@
 import numpy as np
 from scipy import fftpack
+from skimage import restoration
 # import cv2
 from PIL import Image
 import matplotlib.pyplot as plt
@@ -16,11 +17,12 @@ image_zemax = np.loadtxt(image_zemax_path, skiprows=17, delimiter='\t')
 
 # data processing
 object_normalized = object - np.min(object)
-object_normalized = ((object_normalized / np.max(object_normalized)) * 255).astype(np.uint8)
-#psf_normalized = psf - np.min(psf)
-#psf_normalized = (psf_normalized / np.max(psf_normalized) * 100).astype(np.uint8)
+object_normalized = object_normalized / np.max(object_normalized)
+object_normalized2 = ((object_normalized / np.max(object_normalized)) * 255).astype(np.uint8)
+psf_normalized = psf - np.min(psf)
+psf_normalized = psf_normalized / np.max(psf_normalized)
 image_zemax_normalized = image_zemax - np.min(image_zemax)
-image_zemax_normalized = ((image_zemax_normalized / np.max(image_zemax_normalized)) * 255).astype(np.uint8)
+image_zemax_normalized = image_zemax_normalized / np.max(image_zemax_normalized)
 print(object_normalized.shape)
 print(np.min(object_normalized))
 print(np.max(object_normalized))
@@ -30,7 +32,7 @@ print(np.max(psf))
 print(image_zemax_normalized.shape)
 print(np.min(image_zemax_normalized))
 print(np.max(image_zemax_normalized))
-
+noise = 0.1*object_normalized
 
 def convolve(object, psf):
     object_fft = fftpack.fftshift(fftpack.fftn(object))
@@ -43,13 +45,22 @@ def deconvolve(response, original):
     original_fft = fftpack.fftshift(fftpack.fftn(original))
     return fftpack.fftshift(fftpack.ifftn(fftpack.ifftshift(response_fft / original_fft)))
 
+
+#def deconvolve2(original, perturbation, noise):
+#    noise_fft = fftpack.fftshift(fftpack.fftn(noise))
+#    perturbation_fft = fftpack.fftshift(fftpack.fftn(perturbation))
+#    return fftpack.fftshift(fftpack.ifftn(fftpack.ifftshift(original + (noise_fft / perturbation_fft))))
+
 # convolution between object and PSF
-conv = convolve(object_normalized, psf)
+conv = convolve(object_normalized, psf_normalized)
 # deconvolution between convolution and object
 deconv = deconvolve(conv, object_normalized)
 # deconvolution between image and object
-deconv2 = deconvolve(image_zemax_normalized, object_normalized)
+deconv2 = deconvolve(image_zemax_normalized, psf_normalized)
 
+deconv3 = restoration.wiener(image_zemax_normalized, object_normalized, 100000)
+
+#deconv3 = deconvolve2(object_normalized, psf, noise)
 # deconv2_normalized = deconv2 - np.min(deconv2)
 # deconv2_normalized = (deconv2_normalized/np.max(deconv2_normalized)) * np.max(conv)
 
@@ -70,7 +81,7 @@ plt.subplot(3, 2, 5)
 plt.imshow(image_zemax_normalized)
 plt.title('IZ = Image Zemax')
 plt.subplot(3, 2, 6)
-plt.imshow(np.real(deconv2))
+plt.imshow(np.real(deconv3))
 plt.title('Deconvolution(IZ/Object)')
 plt.show()
 
