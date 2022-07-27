@@ -32,7 +32,7 @@ print(np.max(psf))
 print(image_zemax_normalized.shape)
 print(np.min(image_zemax_normalized))
 print(np.max(image_zemax_normalized))
-noise = 0.1*object_normalized
+
 
 def convolve(object, psf):
     object_fft = fftpack.fftshift(fftpack.fftn(object))
